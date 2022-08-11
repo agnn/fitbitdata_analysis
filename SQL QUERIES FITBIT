@@ -1,0 +1,113 @@
+PROBLEM STATMENT- 
+#Task 1 - Fitbit Dataset
+
+1. Read this dataset in pandas , mysql and mongodb 
+2. while creating a table in mysql dont use manual approach to create it  ,always use a automation to create a table in mysql
+ ## hint - use csvkit library to automate this task and to load a data in bulk in you mysql 
+3. convert all the dates avaible in dataset to timestamp format in pandas and in sql you to convert it in date format
+4 . Find out in this data that how many unique id's we have 
+5 . which id is one of the active id that you have in whole dataset 
+6 . how many of them have not logged there activity find out in terms of number of ids 
+7 . Find out who is the laziest person id that we have in dataset 
+8 . Explore over an internet that how much calories burn is required for a healthy person and find out how many healthy person we have in our dataset 
+9. how many person are not a regular person with respect to activity try to find out those 
+10 . who is the thired most active person in this dataset find out those in pandas and in sql both . 
+11 . who is the 5th most laziest person avilable in dataset find it out 
+12 . what is a totla acumulative calories burn for a person find out 
+
+SQL SCRIPT
+------------------------------------------
+#Task 1 ,read data in SQL, the data was loaded through python #in bulk
+
+use task;
+#view the dataset
+SELECT * FROM FITBITDATA;
+
+#Task 3 check the datatype of columns ,column already in date #format
+
+SELECT COLUMN_NAME,DATA_TYPE from INFORMATION_SCHEMA. COLUMNS where table_schema = 'TASK' and table_name = 'FITBITDATA';
+
+#Task 4 ,check distinct id's from dataset
+SELECT COUNT(DISTINCT(Id)) FROM FITBITDATA;
+
+#Task 5evaluate active person in dataset
+
+SELECT ID,SUM(TotalSteps) AS TOTALSTEPS
+FROM FITBITDATA
+GROUP BY ID
+ORDER BY TOTALSTEPS DESC LIMIT 3;
+
+#Task 6 ,comparison of active vs inactive persons
+SELECT 
+    (SELECT 
+            COUNT(DISTINCT (Id))
+        FROM
+            FITBITDATA
+        WHERE
+            LoggedActivitiesDistance != '0.0') AS IDS_WHICH_LOGGED_ONCE,
+    (COUNT(DISTINCT (ID)) - 
+			(SELECT 
+            COUNT(DISTINCT (Id))
+        FROM
+            FITBITDATA
+        WHERE
+            LoggedActivitiesDistance != '0.0')) AS IDS_NEVER_LOGGED
+FROM
+    FITBITDATA;
+    
+# another way to do the above task
+SELECT @LOGGED;
+SET @LOGGED =	(SELECT COUNT(DISTINCT (Id)) FROM FITBITDATA WHERE LoggedActivitiesDistance != '0.0');
+SELECT @LOGGED AS LOGGED_ONCE ,COUNT(DISTINCT(ID)) - @LOGGED AS NEVER_LOGGED
+FROM FITBITDATA;
+
+#Task 7 detemine laziest person in dataset
+SELECT ID, SUM(SedentaryMinutes) AS TOTAL_SEDENTARY_MINUTES
+FROM FITBITDATA
+GROUP BY ID 
+ORDER BY TOTAL_SEDENTARY_MINUTES DESC LIMIT 3;
+
+# Task 8 ,9 & 12 - Evaluate heathy person's from the dataset.
+
+WITH cteTable(id,healthy_days,total_Calories,logged_days,average_calorie,avg_health_index) AS
+(WITH cteHEALTHINDEX
+AS
+(SELECT
+	ID,
+    CALORIES,
+    CASE WHEN 
+		CALORIES>1800 THEN 1
+        ELSE 0
+	END AS HEALTHINDEX
+    FROM FITBITDATA
+),
+cteACTIVITYDAYS (ID,LOGGED_DAYS)
+AS (
+	SELECT ID,COUNT(ActivityDate)
+	FROM FITBITDATA
+	GROUP BY ID)
+
+SELECT 
+	cteACTIVITYDAYS.ID,
+	SUM(HEALTHINDEX) AS HEALTHY_DAYS,
+	SUM(CALORIES) AS TOTAL_CALORIES,LOGGED_DAYS,
+	(SUM(CALORIES)/LOGGED_DAYS) AS AVERAGE_CALORIE,
+    (SUM(HEALTHINDEX)/LOGGED_DAYS) AS AVERAGE_HEALTH_INDEX
+FROM cteHEALTHINDEX JOIN
+cteACTIVITYDAYS ON
+cteHEALTHINDEX.ID = cteACTIVITYDAYS.ID
+GROUP BY ID
+ORDER BY 6 DESC)
+
+SELECT *,
+	CASE 
+		WHEN (average_calorie > 1800 OR avg_health_index > 0.8) THEN 'HEALTHY'
+		ELSE 'UNHEALTHY' END AS HEALTH_STATUS,
+    CASE
+		WHEN logged_days >= 14 THEN 'REGULAR'
+		ELSE 'IRREGULAR'
+		END AS ACTIVITY_STATUS
+ FROM cteTable
+ ORDER BY 7,8
+
+#the above query can be used to evaluate the 3rd most active #and 5th most laziest person 
