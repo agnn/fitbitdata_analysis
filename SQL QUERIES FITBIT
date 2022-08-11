@@ -111,3 +111,4 @@ SELECT *,
  ORDER BY 7,8
 
 #the above query can be used to evaluate the 3rd most active #and 5th most laziest person 
+# THE RESULT SET OF ABOVE QUERY IS UPLOADED AS A SEPARATE CSV FILE QUERYTABLE_TASK8.CSV
